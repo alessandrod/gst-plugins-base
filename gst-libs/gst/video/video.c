@@ -2374,8 +2374,11 @@ gst_video_event_new_downstream_force_key_unit (GstClockTime timestamp,
 
 /**
  * gst_video_event_new_upstream_force_key_unit:
+ * @runningtime: #GstClockTime with the running time in which a key unit is
+ *               requested or GST_CLOCK_TIME_NONE
  * @all-headers: boolean to send all headers, including those in the caps or
  *               those sent at the start of the stream.
+ * @count: integer with the count of forced key units
  *
  * Creates a new upstream Force Key Unit event.
  *
@@ -2386,13 +2389,16 @@ gst_video_event_new_downstream_force_key_unit (GstClockTime timestamp,
  * Since: 0.10.35
  */
 GstEvent *
-gst_video_event_new_upstream_force_key_unit (gboolean all_headers)
+gst_video_event_new_upstream_force_key_unit (GstClockTime running_time,
+    gboolean all_headers, guint count)
 {
   GstEvent *force_key_unit_event;
   GstStructure *s;
 
   s = gst_structure_new (GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME,
-      "all-headers", G_TYPE_BOOLEAN, all_headers, NULL);
+      "running-time", GST_TYPE_CLOCK_TIME, running_time,
+      "all-headers", G_TYPE_BOOLEAN, all_headers,
+      "count", G_TYPE_UINT, count, NULL);
   force_key_unit_event = gst_event_new_custom (GST_EVENT_CUSTOM_UPSTREAM, s);
 
   return force_key_unit_event;
@@ -2457,6 +2463,9 @@ gst_video_event_parse_downstream_force_key_unit (GstEvent * event,
     GstClockTime * running_time, gboolean * all_headers, guint * count)
 {
   const GstStructure *s;
+  GstClockTime ev_timestamp, ev_stream_time, ev_running_time;
+  gboolean ev_all_headers;
+  guint ev_count;
 
   g_return_val_if_fail (event != NULL, FALSE);
 
@@ -2468,24 +2477,43 @@ gst_video_event_parse_downstream_force_key_unit (GstEvent * event,
       || !gst_structure_has_name (s, GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME))
     return FALSE;
 
-  if (!gst_structure_get_clock_time (s, "timestamp", &(*timestamp)))
+  if (!gst_structure_get_clock_time (s, "timestamp", &ev_timestamp))
     return FALSE;               /* Not a force key unit event */
-  if (!gst_structure_get_clock_time (s, "stream-time", &(*stream_time)))
+  if (!gst_structure_get_clock_time (s, "stream-time", &ev_stream_time))
     return FALSE;               /* Not a force key unit event */
-  if (!gst_structure_get_clock_time (s, "running-time", &(*running_time)))
+  if (!gst_structure_get_clock_time (s, "running-time", &ev_running_time))
     return FALSE;               /* Not a force key unit event */
-  if (!gst_structure_get_boolean (s, "all-headers", &(*all_headers)))
+  if (!gst_structure_get_boolean (s, "all-headers", &ev_all_headers))
     return FALSE;               /* Not a force key unit event */
-  if (!gst_structure_get_uint (s, "count", &(*count)))
+  if (!gst_structure_get_uint (s, "count", &ev_count))
     return FALSE;               /* Not a force key unit event */
+
+  if (timestamp)
+    *timestamp = ev_timestamp;
+
+  if (stream_time)
+    *stream_time = ev_stream_time;
+
+  if (running_time)
+    *running_time = ev_running_time;
+
+  if (all_headers)
+    *all_headers = ev_all_headers;
+
+  if (count)
+    *count = ev_count;
+
   return TRUE;
 }
 
 /**
  * gst_video_event_parse_upstream_force_key_unit:
  * @event: A #GstEvent to parse
+ * @runningtime: #GstClockTime with the running time in which a key unit is
+ *               requested or GST_CLOCK_TIME_NONE
  * @all-headers: boolean to send all headers, including those in the caps or
  *               those sent at the start of the stream.
+ * @count: integer with the count of forced key units
  *
  * Parse a #GstEvent, identify if it is an upstream Force Key Unit event, and
  * return a if all headers should be resent.
@@ -2497,9 +2525,12 @@ gst_video_event_parse_downstream_force_key_unit (GstEvent * event,
  */
 gboolean
 gst_video_event_parse_upstream_force_key_unit (GstEvent * event,
-    gboolean * all_headers)
+    GstClockTime * running_time, gboolean * all_headers, guint * count)
 {
   const GstStructure *s;
+  GstClockTime ev_running_time;
+  gboolean ev_all_headers;
+  guint ev_count;
 
   g_return_val_if_fail (event != NULL, FALSE);
 
@@ -2511,7 +2542,21 @@ gst_video_event_parse_upstream_force_key_unit (GstEvent * event,
       || !gst_structure_has_name (s, GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME))
     return FALSE;
 
-  if (!gst_structure_get_boolean (s, "all-headers", &(*all_headers)))
+  if (!gst_structure_get_clock_time (s, "running-time", &ev_running_time))
     return FALSE;               /* Not a force key unit event */
+  if (!gst_structure_get_boolean (s, "all-headers", &ev_all_headers))
+    return FALSE;               /* Not a force key unit event */
+  if (!gst_structure_get_uint (s, "count", &ev_count))
+    return FALSE;               /* Not a force key unit event */
+
+  if (running_time)
+    *running_time = ev_running_time;
+
+  if (all_headers)
+    *all_headers = ev_all_headers;
+
+  if (count)
+    *count = ev_count;
+
   return TRUE;
 }
