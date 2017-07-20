@@ -55,19 +55,15 @@ audio_headers = audio_mkenum_headers + [
 ]
 install_headers(audio_headers, subdir : 'gstreamer-1.0/gst/audio/')
 
-mkenums = find_program('audio_mkenum.py')
-gstaudio_h = custom_target('gstaudioenum_h',
-  output : 'audio-enumtypes.h',
-  input : audio_mkenum_headers,
-  install : true,
-  install_dir : 'include/gstreamer-1.0/gst/audio/',
-  command : [mkenums, glib_mkenums, '@OUTPUT@', '@INPUT@'])
+audio_enums = gnome.mkenums_simple('audio-enumtypes',
+  sources : audio_mkenum_headers,
+  header_prefix : '#include <gst/gst.h>',
+  decorator : 'GST_EXPORT',
+  install_header: true,
+  install_dir : 'include/gstreamer-1.0/gst/audio/')
+gstaudio_c = audio_enums[0]
+gstaudio_h = audio_enums[1]
 
-gstaudio_c = custom_target('gstaudioenum_c',
-  output : 'audio-enumtypes.c',
-  input : audio_mkenum_headers,
-  depends : [gstaudio_h],
-  command : [mkenums, glib_mkenums, '@OUTPUT@', '@INPUT@'])
 audio_gen_sources = [gstaudio_h]
 
 gstaudio_deps = [tag_dep, gst_base_dep, libm]
